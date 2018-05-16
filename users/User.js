@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
-const User = new mongoose.Schema({
+const userSchema = new mongoose.Schema({
     username: {
         type: String,
         required: true,
@@ -11,21 +11,25 @@ const User = new mongoose.Schema({
     password: {
         type: String,
         required: true,
-    }
+        minlength: 4, // make this at least 12 in production
+    },
 });
 
-User.pre('save', function(next) {
-    bcrypt.hash(this.password, 11, (err, hash) => {
-        if (err) {
+userSchema.pre('save', function (next) {
+    return bcrypt
+        .hash(this.password, 10)
+        .then(hash => {
+            this.password = hash;
+
+            return next();
+        })
+        .catch(err => {
             return next(err);
-        }
-        this.password = hash;
-        return next();
-    });
+        });
 });
 
-User.methods.isPasswordValid = function(passwordGuess) {
+userSchema.methods.validatePassword = function (passwordGuess) {
     return bcrypt.compare(passwordGuess, this.password);
-}
+};
 
-module.exports = mongoose.model('User', User);
+module.exports = mongoose.model('User', userSchema, 'users');
